@@ -31,10 +31,12 @@ export default function App() {
   const [activeTopicId, setActiveTopicId] = useState<string | null>(null)
   const [adminOpen, setAdminOpen] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
 
   useEffect(() => {
     getProfiles()
       .then((items) => {
+        setLoadError('')
         setProfiles(items)
         if (items.length > 0) {
           setTopics((current) => {
@@ -48,7 +50,10 @@ export default function App() {
           })
         }
       })
-      .catch(console.error)
+      .catch((err) => {
+        console.error(err)
+        setLoadError('数字人列表加载失败，请检查服务端部署和环境变量。')
+      })
       .finally(() => setLoading(false))
   }, [])
 
@@ -94,7 +99,11 @@ export default function App() {
   }
 
   if (!activeProfile || !activeTopic) {
-    return <div className="h-full flex items-center justify-center text-sm text-[#6b6b6b]">暂无可用数字人</div>
+    return (
+      <div className="h-full flex items-center justify-center text-sm text-[#6b6b6b]">
+        {loadError || '暂无可用数字人'}
+      </div>
+    )
   }
 
   if (adminOpen) {

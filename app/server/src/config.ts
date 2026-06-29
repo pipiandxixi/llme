@@ -23,6 +23,10 @@ function requireEnv(name: string): string {
   return value
 }
 
-export const OPENAI_API_KEY = requireEnv('OPENAI_API_KEY')
-export const OPENAI_BASE_URL = requireEnv('OPENAI_BASE_URL')
-export const OPENAI_MODEL_NAME = requireEnv('OPENAI_MODEL_NAME')
+export function getOpenAIConfig() {
+  return {
+    apiKey: requireEnv('OPENAI_API_KEY'),
+    baseURL: requireEnv('OPENAI_BASE_URL'),
+    modelName: requireEnv('OPENAI_MODEL_NAME'),
+  }
+}

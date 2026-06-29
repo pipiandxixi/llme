@@ -4,17 +4,10 @@ import OpenAI from 'openai'
 import path from 'path'
 import { assembleSystemPrompt } from '../lib/prompt-assembler'
 import {
-  OPENAI_API_KEY,
-  OPENAI_BASE_URL,
-  OPENAI_MODEL_NAME,
   PROFILES_DIR,
+  getOpenAIConfig,
 } from '../config'
 import type { ChatRequest } from '../types'
-
-const client = new OpenAI({
-  apiKey: OPENAI_API_KEY,
-  baseURL: OPENAI_BASE_URL,
-})
 
 const app = new Hono()
 
@@ -63,6 +56,12 @@ app.post('/', async (c) => {
 
   return streamSSE(c, async (stream) => {
     try {
+      const { apiKey, baseURL, modelName } = getOpenAIConfig()
+      const client = new OpenAI({
+        apiKey,
+        baseURL,
+      })
+
       const openaiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
         { role: 'system', content: systemPrompt },
         { role: 'system', content: RESPONSE_FORMAT_GUARD },
@@ -70,7 +69,7 @@ app.post('/', async (c) => {
       ]
 
       const response = await client.chat.completions.create({
-        model: OPENAI_MODEL_NAME,
+        model: modelName,
         max_tokens: 2048,
         messages: openaiMessages,
         stream: true,
