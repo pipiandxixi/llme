@@ -67,6 +67,7 @@ function parseStructuredResponse(content: string): StructuredResponse | null {
 export default function MessageBubble({ message, isStreaming, profileName, profileInitial, profileAvatarUrl }: Props) {
   const isUser = message.role === 'user'
   const structured = !isStreaming ? parseStructuredResponse(message.content) : null
+  const isWaiting = !!isStreaming && !message.content.trim()
 
   if (isUser) {
     return (
@@ -84,7 +85,13 @@ export default function MessageBubble({ message, isStreaming, profileName, profi
       <div className="min-w-0 pt-0.5">
         <div className="text-xs font-semibold mb-1.5">{profileName}</div>
         <div className="markdown-body text-[15px] leading-7 break-words text-[#1f1f1f]">
-          {structured ? (
+          {isWaiting ? (
+            <div className="assistant-thinking" aria-label={`${profileName} 正在回复`}>
+              <span className="assistant-thinking-dot" />
+              <span className="assistant-thinking-dot" />
+              <span className="assistant-thinking-dot" />
+            </div>
+          ) : structured ? (
             <div className="space-y-5">
               {structured.intro && <p>{structured.intro}</p>}
               {structured.sections.map((section, index) => (
