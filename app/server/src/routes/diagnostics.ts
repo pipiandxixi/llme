@@ -148,4 +148,18 @@ app.get('/full-chat', async (c) => {
   }
 })
 
+app.post('/echo', async (c) => {
+  const startedAt = Date.now()
+  const body = await c.req.json().catch((err) => {
+    throw err
+  })
+
+  return c.json({
+    ok: true,
+    durationMs: Date.now() - startedAt,
+    body,
+    contentType: c.req.header('content-type') ?? null,
+  })
+})
+
 export default app
