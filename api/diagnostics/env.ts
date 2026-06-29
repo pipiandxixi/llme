@@ -1,1 +1,5 @@
-export { default } from '../_shared'
+import { getOpenAIEnvStatus, json } from '../_helpers'
+
+export default async function handler() {
+  return json(getOpenAIEnvStatus())
+}
