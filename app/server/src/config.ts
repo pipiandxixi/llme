@@ -1,7 +1,14 @@
+import fs from 'fs'
 import path from 'path'
 import { config as loadEnv } from 'dotenv'
 
-export const PROJECT_ROOT = path.resolve(__dirname, '../../..')
+const CWD_ROOT = process.cwd()
+const FALLBACK_ROOT = path.resolve(__dirname, '../../..')
+
+export const PROJECT_ROOT = fs.existsSync(path.join(CWD_ROOT, 'profiles'))
+  ? CWD_ROOT
+  : FALLBACK_ROOT
+
 loadEnv({ path: path.join(PROJECT_ROOT, '.env') })
 
 export const PROFILES_DIR = process.env.PROFILES_DIR?.trim() ||

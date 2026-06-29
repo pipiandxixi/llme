@@ -1,0 +1,17 @@
+{
+  "buildCommand": "npm run build:web",
+  "outputDirectory": "app/web/dist",
+  "framework": null,
+  "functions": {
+    "api/[...route].ts": {
+      "includeFiles": "profiles/**",
+      "maxDuration": 60
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
+  ]
+}
