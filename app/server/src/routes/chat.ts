@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { streamSSE } from 'hono/streaming'
 import OpenAI from 'openai'
+import { APIConnectionError, APIConnectionTimeoutError, APIError } from 'openai/error'
 import path from 'path'
 import { assembleSystemPrompt } from '../lib/prompt-assembler'
 import {
@@ -37,6 +38,24 @@ JSON 结构如下：
 - 不要在 JSON 前后添加任何其他字符
 `.trim()
 
+const UPSTREAM_TIMEOUT_MS = 15000
+
+function formatUpstreamError(err: unknown): string {
+  if (err instanceof APIConnectionTimeoutError) {
+    return `upstream timeout after ${UPSTREAM_TIMEOUT_MS}ms`
+  }
+  if (err instanceof APIConnectionError) {
+    return `upstream connection error: ${err.message}`
+  }
+  if (err instanceof APIError) {
+    return `upstream api error ${err.status ?? 'unknown'}: ${err.message}`
+  }
+  if (err instanceof Error) {
+    return err.message
+  }
+  return 'unknown upstream error'
+}
+
 app.post('/', async (c) => {
   const { profileId, messages } = await c.req.json<ChatRequest>()
 
@@ -55,11 +74,14 @@ app.post('/', async (c) => {
   }
 
   return streamSSE(c, async (stream) => {
+    const startedAt = Date.now()
     try {
       const { apiKey, baseURL, modelName } = getOpenAIConfig()
       const client = new OpenAI({
         apiKey,
         baseURL,
+        timeout: UPSTREAM_TIMEOUT_MS,
+        maxRetries: 0,
       })
 
       const openaiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
@@ -68,6 +90,13 @@ app.post('/', async (c) => {
         ...messages.map(m => ({ role: m.role, content: m.content } as OpenAI.Chat.ChatCompletionMessageParam)),
       ]
 
+      console.log('[chat] start', JSON.stringify({
+        profileId,
+        modelName,
+        baseURL,
+        messageCount: messages.length,
+      }))
+
       const response = await client.chat.completions.create({
         model: modelName,
         max_tokens: 2048,
@@ -75,11 +104,26 @@ app.post('/', async (c) => {
         stream: true,
       })
 
+      let chunkCount = 0
       for await (const chunk of response) {
+        chunkCount += 1
         const text = chunk.choices[0]?.delta?.content
         if (text) await stream.writeSSE({ data: text })
       }
+
+      console.log('[chat] complete', JSON.stringify({
+        profileId,
+        durationMs: Date.now() - startedAt,
+        chunkCount,
+      }))
     } catch (err) {
+      const errorMessage = formatUpstreamError(err)
+      console.error('[chat] failed', JSON.stringify({
+        profileId,
+        durationMs: Date.now() - startedAt,
+        error: errorMessage,
+      }))
+      await stream.writeSSE({ data: `系统错误：${errorMessage}` })
       await stream.writeSSE({ data: '[ERROR]' })
     } finally {
       await stream.writeSSE({ data: '[DONE]' })
