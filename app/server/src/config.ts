@@ -38,7 +38,14 @@ export function getOpenAIEnvStatus() {
 
   return {
     hasOpenAIKey: apiKey.length > 0,
+    openAIKeyMasked: maskSecret(apiKey),
     openAIBaseURL: baseURL || null,
     openAIModelName: modelName || null,
   }
+}
+
+function maskSecret(value: string): string | null {
+  if (!value) return null
+  if (value.length <= 10) return `${value.slice(0, 2)}***${value.slice(-2)}`
+  return `${value.slice(0, 6)}***${value.slice(-4)}`
 }

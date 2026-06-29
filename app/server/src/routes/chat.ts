@@ -7,6 +7,7 @@ import { assembleSystemPrompt } from '../lib/prompt-assembler'
 import {
   PROFILES_DIR,
   getOpenAIConfig,
+  getOpenAIEnvStatus,
 } from '../config'
 import type { ChatRequest } from '../types'
 
@@ -56,8 +57,38 @@ function formatUpstreamError(err: unknown): string {
   return 'unknown upstream error'
 }
 
+function serializeError(err: unknown) {
+  if (err instanceof APIError) {
+    return {
+      name: err.name,
+      message: err.message,
+      status: err.status ?? null,
+      code: 'code' in err ? (err as { code?: unknown }).code ?? null : null,
+      type: 'type' in err ? (err as { type?: unknown }).type ?? null : null,
+      stack: err.stack ?? null,
+    }
+  }
+
+  if (err instanceof Error) {
+    return {
+      name: err.name,
+      message: err.message,
+      stack: err.stack ?? null,
+      cause: 'cause' in err ? String((err as { cause?: unknown }).cause ?? '') : null,
+    }
+  }
+
+  return { value: String(err) }
+}
+
 app.post('/', async (c) => {
   const { profileId, messages } = await c.req.json<ChatRequest>()
+  const requestMeta = {
+    profileId,
+    messageCount: messages?.length ?? 0,
+    vercelId: c.req.header('x-vercel-id') ?? null,
+    userAgent: c.req.header('user-agent') ?? null,
+  }
 
   if (!profileId || !messages?.length) {
     return c.json({ error: 'profileId and messages are required' }, 400)
@@ -68,7 +99,13 @@ app.post('/', async (c) => {
 
   let systemPrompt: string
   try {
+    console.log('[chat] prompt:load', JSON.stringify(requestMeta))
     systemPrompt = await assembleSystemPrompt(profileDir, userQuery)
+    console.log('[chat] prompt:ready', JSON.stringify({
+      ...requestMeta,
+      systemPromptLength: systemPrompt.length,
+      userQueryLength: userQuery.length,
+    }))
   } catch {
     return c.json({ error: 'Profile not found or could not be loaded' }, 404)
   }
@@ -91,12 +128,14 @@ app.post('/', async (c) => {
       ]
 
       console.log('[chat] start', JSON.stringify({
-        profileId,
+        ...requestMeta,
         modelName,
         baseURL,
-        messageCount: messages.length,
+        env: getOpenAIEnvStatus(),
+        timeoutMs: UPSTREAM_TIMEOUT_MS,
       }))
 
+      const upstreamStartedAt = Date.now()
       const response = await client.chat.completions.create({
         model: modelName,
         max_tokens: 2048,
@@ -105,23 +144,36 @@ app.post('/', async (c) => {
       })
 
       let chunkCount = 0
+      let firstChunkAt: number | null = null
       for await (const chunk of response) {
         chunkCount += 1
+        if (firstChunkAt === null) {
+          firstChunkAt = Date.now()
+          console.log('[chat] first_chunk', JSON.stringify({
+            ...requestMeta,
+            durationMs: firstChunkAt - upstreamStartedAt,
+            chunkCount,
+          }))
+        }
         const text = chunk.choices[0]?.delta?.content
         if (text) await stream.writeSSE({ data: text })
       }
 
       console.log('[chat] complete', JSON.stringify({
-        profileId,
+        ...requestMeta,
         durationMs: Date.now() - startedAt,
+        upstreamDurationMs: Date.now() - upstreamStartedAt,
+        firstChunkLatencyMs: firstChunkAt ? firstChunkAt - upstreamStartedAt : null,
         chunkCount,
       }))
     } catch (err) {
       const errorMessage = formatUpstreamError(err)
       console.error('[chat] failed', JSON.stringify({
-        profileId,
+        ...requestMeta,
         durationMs: Date.now() - startedAt,
         error: errorMessage,
+        details: serializeError(err),
+        env: getOpenAIEnvStatus(),
       }))
       await stream.writeSSE({ data: `系统错误：${errorMessage}` })
       await stream.writeSSE({ data: '[ERROR]' })

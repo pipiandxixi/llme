@@ -22,10 +22,35 @@ function formatUpstreamError(err: unknown): string {
   return 'unknown upstream error'
 }
 
+function serializeError(err: unknown) {
+  if (err instanceof APIError) {
+    return {
+      name: err.name,
+      message: err.message,
+      status: err.status ?? null,
+      code: 'code' in err ? (err as { code?: unknown }).code ?? null : null,
+      type: 'type' in err ? (err as { type?: unknown }).type ?? null : null,
+      stack: err.stack ?? null,
+    }
+  }
+
+  if (err instanceof Error) {
+    return {
+      name: err.name,
+      message: err.message,
+      stack: err.stack ?? null,
+      cause: 'cause' in err ? String((err as { cause?: unknown }).cause ?? '') : null,
+    }
+  }
+
+  return { value: String(err) }
+}
+
 app.get('/env', (c) => c.json(getOpenAIEnvStatus()))
 
 app.get('/upstream', async (c) => {
   const startedAt = Date.now()
+  console.log('[diagnostics] upstream:start', JSON.stringify(getOpenAIEnvStatus()))
 
   try {
     const { apiKey, baseURL, modelName } = getOpenAIConfig()
@@ -47,11 +72,18 @@ app.get('/upstream', async (c) => {
     return c.json({
       ok: true,
       durationMs: Date.now() - startedAt,
+      ...getOpenAIEnvStatus(),
       modelName,
       baseURL,
       replyPreview: response.choices[0]?.message?.content?.slice(0, 80) ?? '',
     })
   } catch (err) {
+    console.error('[diagnostics] upstream:failed', JSON.stringify({
+      ...getOpenAIEnvStatus(),
+      durationMs: Date.now() - startedAt,
+      error: formatUpstreamError(err),
+      details: serializeError(err),
+    }))
     return c.json({
       ok: false,
       durationMs: Date.now() - startedAt,
