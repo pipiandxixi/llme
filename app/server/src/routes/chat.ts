@@ -140,23 +140,20 @@ app.post('/', async (c) => {
         model: modelName,
         max_tokens: 2048,
         messages: openaiMessages,
-        stream: true,
+        stream: false,
       })
 
-      let chunkCount = 0
-      let firstChunkAt: number | null = null
-      for await (const chunk of response) {
-        chunkCount += 1
-        if (firstChunkAt === null) {
-          firstChunkAt = Date.now()
-          console.log('[chat] first_chunk', JSON.stringify({
-            ...requestMeta,
-            durationMs: firstChunkAt - upstreamStartedAt,
-            chunkCount,
-          }))
-        }
-        const text = chunk.choices[0]?.delta?.content
-        if (text) await stream.writeSSE({ data: text })
+      const content = response.choices[0]?.message?.content ?? ''
+      const firstChunkAt = Date.now()
+
+      console.log('[chat] first_chunk', JSON.stringify({
+        ...requestMeta,
+        durationMs: firstChunkAt - upstreamStartedAt,
+        chunkCount: content ? 1 : 0,
+      }))
+
+      if (content) {
+        await stream.writeSSE({ data: content })
       }
 
       console.log('[chat] complete', JSON.stringify({
@@ -164,7 +161,8 @@ app.post('/', async (c) => {
         durationMs: Date.now() - startedAt,
         upstreamDurationMs: Date.now() - upstreamStartedAt,
         firstChunkLatencyMs: firstChunkAt ? firstChunkAt - upstreamStartedAt : null,
-        chunkCount,
+        chunkCount: content ? 1 : 0,
+        contentLength: content.length,
       }))
     } catch (err) {
       const errorMessage = formatUpstreamError(err)
