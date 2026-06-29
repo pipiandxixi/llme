@@ -1,5 +1,5 @@
-import type { ChatRequest } from '../../app/server/src/types'
-import { formatUpstreamError, getOpenAIEnvStatus, runChat, sendJson, serializeError } from '../_helpers'
+import type { ChatRequest } from '../app/server/src/types'
+import { formatUpstreamError, getOpenAIEnvStatus, runChat, sendJson, serializeError } from './_helpers'
 
 export default async function handler(req: any, res: any) {
   const startedAt = Date.now()
@@ -7,8 +7,8 @@ export default async function handler(req: any, res: any) {
   try {
     const body = req.body as ChatRequest
     const requestMeta = {
-      profileId: body.profileId,
-      messageCount: body.messages?.length ?? 0,
+      profileId: body?.profileId ?? null,
+      messageCount: body?.messages?.length ?? 0,
       userAgent: req.headers['user-agent'] ?? null,
     }
 
