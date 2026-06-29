@@ -18,6 +18,14 @@ function parseSimpleYaml(yamlStr: string): Record<string, string> {
   return data
 }
 
+async function readProfileMetaFile(profileDir: string): Promise<Record<string, string>> {
+  const raw = await fs.readFile(path.join(profileDir, 'meta.yaml'), 'utf-8')
+  const yamlStr = raw.includes('---')
+    ? (raw.match(/^---\n([\s\S]*?)\n---/) ?? ['', ''])[1]
+    : raw
+  return parseSimpleYaml(yamlStr)
+}
+
 export async function listProfiles(profilesDir: string): Promise<ProfileMeta[]> {
   const entries = await fs.readdir(profilesDir, { withFileTypes: true })
   const profiles: ProfileMeta[] = []
@@ -25,11 +33,8 @@ export async function listProfiles(profilesDir: string): Promise<ProfileMeta[]> 
     if (!entry.isDirectory()) continue
     const metaPath = path.join(profilesDir, entry.name, 'meta.yaml')
     try {
-      const raw = await fs.readFile(metaPath, 'utf-8')
-      const yamlStr = raw.includes('---')
-        ? (raw.match(/^---\n([\s\S]*?)\n---/) ?? ['', ''])[1]
-        : raw
-      const data = parseSimpleYaml(yamlStr)
+      await fs.access(metaPath)
+      const data = await readProfileMetaFile(path.join(profilesDir, entry.name))
       profiles.push({
         id: entry.name,
         name: data.name ?? entry.name,
@@ -85,9 +90,30 @@ export async function loadProfileSections(profileDir: string): Promise<ProfileSe
   return { core, cognition, context, domains }
 }
 
+export async function loadProfileMeta(profileDir: string): Promise<ProfileMeta> {
+  const data = await readProfileMetaFile(profileDir)
+  return {
+    id: path.basename(profileDir),
+    name: data.name ?? path.basename(profileDir),
+    description: data.description ?? '',
+    avatar: data.avatar?.trim() || undefined,
+  }
+}
+
+function renderPromptTemplate(template: string, meta: ProfileMeta): string {
+  return template
+    .replaceAll('{{profile_id}}', meta.id)
+    .replaceAll('{{profile_name}}', meta.name)
+    .replaceAll('{{profile_description}}', meta.description)
+}
+
 export async function loadBasePrompt(profileDir: string): Promise<string> {
-  const raw = await fs.readFile(path.join(profileDir, 'system/base_prompt.md'), 'utf-8')
-  return stripFrontmatter(raw)
+  const templatePath = path.join(path.dirname(profileDir), '_shared/system/base_prompt.md')
+  const [meta, raw] = await Promise.all([
+    loadProfileMeta(profileDir),
+    fs.readFile(templatePath, 'utf-8'),
+  ])
+  return renderPromptTemplate(stripFrontmatter(raw), meta)
 }
 
 export interface ProfileDocument {
