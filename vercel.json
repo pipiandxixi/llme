@@ -3,7 +3,7 @@
   "outputDirectory": "app/web/dist",
   "framework": null,
   "functions": {
-    "api/[...route].ts": {
+    "api/**/*.ts": {
       "includeFiles": "profiles/**",
       "maxDuration": 60
     }
