@@ -4,12 +4,13 @@ import type { ProfileMeta, Message, Topic } from '../types'
 import MessageBubble from '../components/MessageBubble'
 import ProfileAvatar from '../components/ProfileAvatar'
 
-function Icon({ name, size = 18 }: { name: 'menu' | 'plus' | 'chevron' | 'chat' | 'send' | 'sparkles'; size?: number }) {
+function Icon({ name, size = 18 }: { name: 'menu' | 'plus' | 'chevron' | 'chat' | 'trash' | 'send' | 'sparkles'; size?: number }) {
   const paths = {
     menu: <><path d="M4 7h16M4 12h16M4 17h16" /></>,
     plus: <><path d="M12 5v14M5 12h14" /></>,
     chevron: <><path d="m9 18 6-6-6-6" /></>,
     chat: <><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" /></>,
+    trash: <><path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /></>,
     send: <><path d="m5 12 7-7 7 7M12 5v14" /></>,
     sparkles: <><path d="m12 3 1.2 3.8L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.2L12 3zM5 15l.7 2.3L8 18l-2.3.7L5 21l-.7-2.3L2 18l2.3-.7L5 15z" /></>,
   }
@@ -23,11 +24,12 @@ interface Props {
   activeTopic: Topic
   onSelectTopic: (id: string) => void
   onNewTopic: (profileId: string) => void
+  onDeleteTopic: (id: string) => void
   onMessagesChange: (messages: Message[]) => void
   onOpenAdmin: () => void
 }
 
-export default function Chat({ profiles, profile, topics, activeTopic, onSelectTopic, onNewTopic, onMessagesChange, onOpenAdmin }: Props) {
+export default function Chat({ profiles, profile, topics, activeTopic, onSelectTopic, onNewTopic, onDeleteTopic, onMessagesChange, onOpenAdmin }: Props) {
   const [input, setInput] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -98,6 +100,12 @@ export default function Chat({ profiles, profile, topics, activeTopic, onSelectT
     })
   }
 
+  const removeTopic = (topicId: string, title: string) => {
+    const confirmed = window.confirm(`确认删除这个对话？\n\n${title}`)
+    if (!confirmed) return
+    onDeleteTopic(topicId)
+  }
+
   return (
     <div className="h-full bg-white flex text-[#0d0d0d] overflow-hidden">
       {sidebarOpen && <button aria-label="关闭侧边栏" className="fixed inset-0 bg-black/25 z-20 md:hidden" onClick={() => setSidebarOpen(false)} />}
@@ -125,14 +133,26 @@ export default function Chat({ profiles, profile, topics, activeTopic, onSelectT
                 {expanded && (
                   <div className="ml-4 pl-3 border-l border-black/10 mt-1 space-y-0.5">
                     {itemTopics.map((topic) => (
-                      <button
+                      <div
                         key={topic.id}
-                        onClick={() => { onSelectTopic(topic.id); setSidebarOpen(false) }}
-                        className={`w-full flex items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm ${topic.id === activeTopic.id ? 'bg-[#e7e7e7] text-black' : 'text-[#5f5f5f] hover:bg-[#eeeeee] hover:text-black'}`}
+                        className={`w-full flex items-center gap-1 rounded-lg px-1 py-0.5 text-sm ${topic.id === activeTopic.id ? 'bg-[#e7e7e7] text-black' : 'text-[#5f5f5f] hover:bg-[#eeeeee] hover:text-black'}`}
                       >
-                        <Icon name="chat" size={15} />
-                        <span className="truncate">{topic.title}</span>
-                      </button>
+                        <button
+                          onClick={() => { onSelectTopic(topic.id); setSidebarOpen(false) }}
+                          className="min-w-0 flex-1 flex items-center gap-2 rounded-lg px-1.5 py-1.5 text-left"
+                        >
+                          <Icon name="chat" size={15} />
+                          <span className="truncate">{topic.title}</span>
+                        </button>
+                        <button
+                          onClick={() => removeTopic(topic.id, topic.title)}
+                          className="topic-delete-button"
+                          title="删除对话"
+                          aria-label={`删除对话 ${topic.title}`}
+                        >
+                          <Icon name="trash" size={14} />
+                        </button>
+                      </div>
                     ))}
                     <button onClick={() => onNewTopic(item.id)} className="w-full flex items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-[#777] hover:bg-[#eeeeee] hover:text-black">
                       <Icon name="plus" size={15} /><span>新建 Topic</span>

@@ -3,8 +3,10 @@ import { getProfiles } from './api'
 import type { Message, ProfileMeta, Topic } from './types'
 import Chat from './pages/Chat'
 import Admin from './pages/Admin'
+import Login from './pages/Login'
 
 const STORAGE_KEY = 'llme.topics.v1'
+const AUTH_STORAGE_KEY = 'llme.auth.v1'
 
 function loadTopics(): Topic[] {
   try {
@@ -25,6 +27,14 @@ function createTopic(profileId: string): Topic {
   }
 }
 
+function loadAuthState(): boolean {
+  try {
+    return localStorage.getItem(AUTH_STORAGE_KEY) === 'true'
+  } catch {
+    return false
+  }
+}
+
 export default function App() {
   const [profiles, setProfiles] = useState<ProfileMeta[]>([])
   const [topics, setTopics] = useState<Topic[]>(loadTopics)
@@ -32,6 +42,7 @@ export default function App() {
   const [adminOpen, setAdminOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
+  const [authenticated, setAuthenticated] = useState(loadAuthState)
 
   useEffect(() => {
     getProfiles()
@@ -61,6 +72,10 @@ export default function App() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(topics))
   }, [topics])
 
+  useEffect(() => {
+    localStorage.setItem(AUTH_STORAGE_KEY, authenticated ? 'true' : 'false')
+  }, [authenticated])
+
   const activeTopic = useMemo(
     () => topics.find((topic) => topic.id === activeTopicId) ?? null,
     [topics, activeTopicId],
@@ -71,6 +86,22 @@ export default function App() {
     const topic = createTopic(profileId)
     setTopics((current) => [topic, ...current])
     setActiveTopicId(topic.id)
+  }
+
+  const deleteTopic = (topicId: string) => {
+    setTopics((current) => {
+      const next = current.filter((topic) => topic.id !== topicId)
+
+      if (activeTopicId === topicId) {
+        setActiveTopicId(next[0]?.id ?? null)
+      }
+
+      return next
+    })
+  }
+
+  if (!authenticated) {
+    return <Login onLogin={() => setAuthenticated(true)} />
   }
 
   const updateMessages = (topicId: string, messages: Message[]) => {
@@ -101,7 +132,7 @@ export default function App() {
   if (!activeProfile || !activeTopic) {
     return (
       <div className="h-full flex items-center justify-center text-sm text-[#6b6b6b]">
-        {loadError || '暂无可用数字人'}
+        {loadError || '当前没有会话，点击左上角加号新建对话。'}
       </div>
     )
   }
@@ -118,6 +149,7 @@ export default function App() {
       activeTopic={activeTopic}
       onSelectTopic={setActiveTopicId}
       onNewTopic={addTopic}
+      onDeleteTopic={deleteTopic}
       onMessagesChange={(messages) => updateMessages(activeTopic.id, messages)}
       onOpenAdmin={() => setAdminOpen(true)}
     />

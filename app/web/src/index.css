@@ -84,6 +84,106 @@ button {
   cursor: not-allowed;
 }
 
+.topic-delete-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  color: #8a8a8a;
+  flex: 0 0 auto;
+}
+
+.topic-delete-button:hover {
+  background: rgb(0 0 0 / 6%);
+  color: #c03535;
+}
+
+.login-shell {
+  background:
+    radial-gradient(circle at top left, rgb(196 220 255 / 70%), transparent 34%),
+    radial-gradient(circle at bottom right, rgb(255 218 187 / 75%), transparent 30%),
+    linear-gradient(180deg, #f5f7fb 0%, #eef1f6 100%);
+}
+
+.login-card {
+  background: rgb(255 255 255 / 88%);
+  border: 1px solid rgb(17 24 39 / 8%);
+  border-radius: 24px;
+  box-shadow: 0 24px 80px rgb(15 23 42 / 12%);
+  padding: 28px;
+  backdrop-filter: blur(18px);
+}
+
+.login-eyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
+.login-title {
+  margin: 12px 0 6px;
+  font-size: 32px;
+  line-height: 1;
+  letter-spacing: -.04em;
+}
+
+.login-copy {
+  margin: 0 0 20px;
+  color: #677182;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.login-label {
+  display: block;
+  margin-bottom: 14px;
+  color: #1f2937;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.login-input {
+  display: block;
+  width: 100%;
+  margin-top: 7px;
+  border: 1px solid #d7dce5;
+  border-radius: 14px;
+  background: rgb(255 255 255 / 90%);
+  padding: 12px 14px;
+  font-size: 14px;
+  outline: none;
+}
+
+.login-input:focus {
+  border-color: #6b8afd;
+  box-shadow: 0 0 0 4px rgb(107 138 253 / 12%);
+}
+
+.login-error {
+  margin: 6px 0 14px;
+  color: #b42318;
+  font-size: 13px;
+}
+
+.login-submit {
+  width: 100%;
+  border: 0;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #111827 0%, #334155 100%);
+  color: white;
+  padding: 12px 14px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.login-submit:hover {
+  filter: brightness(1.05);
+}
+
 .markdown-body {
   overflow-wrap: anywhere;
 }
