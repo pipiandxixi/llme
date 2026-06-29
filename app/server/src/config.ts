@@ -30,3 +30,15 @@ export function getOpenAIConfig() {
     modelName: requireEnv('OPENAI_MODEL_NAME'),
   }
 }
+
+export function getOpenAIEnvStatus() {
+  const apiKey = process.env.OPENAI_API_KEY?.trim() ?? ''
+  const baseURL = process.env.OPENAI_BASE_URL?.trim() ?? ''
+  const modelName = process.env.OPENAI_MODEL_NAME?.trim() ?? ''
+
+  return {
+    hasOpenAIKey: apiKey.length > 0,
+    openAIBaseURL: baseURL || null,
+    openAIModelName: modelName || null,
+  }
+}
