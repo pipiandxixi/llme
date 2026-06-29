@@ -3,7 +3,7 @@ import type { ProfileMeta, Message, ProfileDocuments } from './types'
 export function getProfileAvatarUrl(profile: ProfileMeta): string | undefined {
   if (!profile.avatar) return undefined
   if (/^https?:\/\//i.test(profile.avatar)) return profile.avatar
-  return `/api/profile/avatar?id=${encodeURIComponent(profile.id)}`
+  return `/profiles/${encodeURIComponent(profile.id)}/${profile.avatar.replace(/^\/+/, '')}`
 }
 
 export async function getProfiles(): Promise<ProfileMeta[]> {
