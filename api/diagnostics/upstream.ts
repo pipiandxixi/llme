@@ -1,8 +1,8 @@
 import OpenAI from 'openai'
 import { getOpenAIConfig, getOpenAIEnvStatus } from '../../app/server/src/config'
-import { formatUpstreamError, json, serializeError, UPSTREAM_TIMEOUT_MS } from '../_helpers'
+import { formatUpstreamError, sendJson, serializeError, UPSTREAM_TIMEOUT_MS } from '../_helpers'
 
-export default async function handler() {
+export default async function handler(_req: any, res: any) {
   const startedAt = Date.now()
   console.log('[diagnostics-native] upstream:start', JSON.stringify(getOpenAIEnvStatus()))
 
@@ -23,7 +23,7 @@ export default async function handler() {
       stream: false,
     })
 
-    return json({
+    return sendJson(res, {
       ok: true,
       durationMs: Date.now() - startedAt,
       ...getOpenAIEnvStatus(),
@@ -38,7 +38,7 @@ export default async function handler() {
       error: formatUpstreamError(err),
       details: serializeError(err),
     }))
-    return json({
+    return sendJson(res, {
       ok: false,
       durationMs: Date.now() - startedAt,
       ...getOpenAIEnvStatus(),

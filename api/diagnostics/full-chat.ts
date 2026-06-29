@@ -1,15 +1,14 @@
-import { formatUpstreamError, getOpenAIEnvStatus, json, runFullChat, serializeError } from '../_helpers'
+import { formatUpstreamError, getOpenAIEnvStatus, runFullChat, sendJson, serializeError } from '../_helpers'
 
-export default async function handler(req: Request) {
-  const url = new URL(req.url)
-  const profileId = url.searchParams.get('profileId') || 'elonmusk'
-  const query = url.searchParams.get('q') || '介绍一下你自己'
+export default async function handler(req: any, res: any) {
+  const profileId = req.query?.profileId || 'elonmusk'
+  const query = req.query?.q || '介绍一下你自己'
 
   try {
     const result = await runFullChat(profileId, query)
-    return json({ ok: true, ...result })
+    return sendJson(res, { ok: true, ...result })
   } catch (err) {
-    return json({
+    return sendJson(res, {
       ok: false,
       ...getOpenAIEnvStatus(),
       error: formatUpstreamError(err),

@@ -1,15 +1,15 @@
 import type { ChatRequest } from '../../app/server/src/types'
-import { formatUpstreamError, getOpenAIEnvStatus, json, runChat, serializeError } from '../_helpers'
+import { formatUpstreamError, getOpenAIEnvStatus, runChat, sendJson, serializeError } from '../_helpers'
 
-export default async function handler(req: Request) {
+export default async function handler(req: any, res: any) {
   const startedAt = Date.now()
 
   try {
-    const body = await req.json() as ChatRequest
+    const body = req.body as ChatRequest
     const requestMeta = {
       profileId: body.profileId,
       messageCount: body.messages?.length ?? 0,
-      userAgent: req.headers.get('user-agent'),
+      userAgent: req.headers['user-agent'] ?? null,
     }
 
     console.log('[chat-native] start', JSON.stringify({
@@ -27,7 +27,7 @@ export default async function handler(req: Request) {
       baseURL: result.baseURL,
     }))
 
-    return json({ content: result.content })
+    return sendJson(res, { content: result.content })
   } catch (err) {
     console.error('[chat-native] failed', JSON.stringify({
       durationMs: Date.now() - startedAt,
@@ -35,6 +35,6 @@ export default async function handler(req: Request) {
       details: serializeError(err),
       env: getOpenAIEnvStatus(),
     }))
-    return json({ error: formatUpstreamError(err) }, 502)
+    return sendJson(res, { error: formatUpstreamError(err) }, 502)
   }
 }

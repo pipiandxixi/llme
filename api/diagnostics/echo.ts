@@ -1,12 +1,11 @@
-import { json } from '../_helpers'
+import { sendJson } from '../_helpers'
 
-export default async function handler(req: Request) {
+export default async function handler(req: any, res: any) {
   const startedAt = Date.now()
-  const body = await req.json()
-  return json({
+  return sendJson(res, {
     ok: true,
     durationMs: Date.now() - startedAt,
-    body,
-    contentType: req.headers.get('content-type'),
+    body: req.body,
+    contentType: req.headers['content-type'] ?? null,
   })
 }

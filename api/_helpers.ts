@@ -17,6 +17,12 @@ export function json(data: unknown, status = 200) {
   })
 }
 
+export function sendJson(res: {
+  status: (code: number) => { json: (payload: unknown) => unknown }
+}, data: unknown, status = 200) {
+  return res.status(status).json(data)
+}
+
 export function formatUpstreamError(err: unknown): string {
   if (err instanceof APIConnectionTimeoutError) {
     return `upstream timeout after ${UPSTREAM_TIMEOUT_MS}ms`
