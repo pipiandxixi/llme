@@ -1,0 +1,11 @@
+{
+  "name": "llme",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"pnpm --filter @llme/server dev\" \"pnpm --filter @llme/web dev\"",
+    "build": "pnpm --filter @llme/server build && pnpm --filter @llme/web build"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  }
+}

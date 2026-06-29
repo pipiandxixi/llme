@@ -1,0 +1,6 @@
+packages:
+  - 'server'
+  - 'web'
+allowBuilds:
+  '0': esbuild
+  esbuild: true
