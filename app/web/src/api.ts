@@ -3,7 +3,7 @@ import type { ProfileMeta, Message, ProfileDocuments } from './types'
 export function getProfileAvatarUrl(profile: ProfileMeta): string | undefined {
   if (!profile.avatar) return undefined
   if (/^https?:\/\//i.test(profile.avatar)) return profile.avatar
-  return `/api/profiles/${encodeURIComponent(profile.id)}/avatar`
+  return `/api/profile/avatar?id=${encodeURIComponent(profile.id)}`
 }
 
 export async function getProfiles(): Promise<ProfileMeta[]> {
@@ -13,7 +13,7 @@ export async function getProfiles(): Promise<ProfileMeta[]> {
 }
 
 export async function getProfileDocuments(profileId: string): Promise<ProfileDocuments> {
-  const res = await fetch(`/api/profiles/${encodeURIComponent(profileId)}/documents`)
+  const res = await fetch(`/api/profile/documents?id=${encodeURIComponent(profileId)}`)
   if (!res.ok) throw new Error('Failed to fetch profile documents')
   return res.json()
 }
