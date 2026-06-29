@@ -5,6 +5,8 @@ import { PROFILES_DIR, getOpenAIConfig, getOpenAIEnvStatus } from '../app/server
 import { assembleSystemPrompt } from '../app/server/src/lib/prompt-assembler'
 import type { ChatRequest } from '../app/server/src/types'
 
+export { getOpenAIEnvStatus }
+
 export const UPSTREAM_TIMEOUT_MS = 15000
 
 export function json(data: unknown, status = 200) {
