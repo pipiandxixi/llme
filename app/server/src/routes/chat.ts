@@ -1,5 +1,4 @@
 import { Hono } from 'hono'
-import { streamSSE } from 'hono/streaming'
 import OpenAI from 'openai'
 import { APIConnectionError, APIConnectionTimeoutError, APIError } from 'openai/error'
 import path from 'path'
@@ -109,76 +108,68 @@ app.post('/', async (c) => {
   } catch {
     return c.json({ error: 'Profile not found or could not be loaded' }, 404)
   }
+  const startedAt = Date.now()
+  try {
+    const { apiKey, baseURL, modelName } = getOpenAIConfig()
+    const client = new OpenAI({
+      apiKey,
+      baseURL,
+      timeout: UPSTREAM_TIMEOUT_MS,
+      maxRetries: 0,
+    })
 
-  return streamSSE(c, async (stream) => {
-    const startedAt = Date.now()
-    try {
-      const { apiKey, baseURL, modelName } = getOpenAIConfig()
-      const client = new OpenAI({
-        apiKey,
-        baseURL,
-        timeout: UPSTREAM_TIMEOUT_MS,
-        maxRetries: 0,
-      })
+    const openaiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+      { role: 'system', content: systemPrompt },
+      { role: 'system', content: RESPONSE_FORMAT_GUARD },
+      ...messages.map(m => ({ role: m.role, content: m.content } as OpenAI.Chat.ChatCompletionMessageParam)),
+    ]
 
-      const openaiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-        { role: 'system', content: systemPrompt },
-        { role: 'system', content: RESPONSE_FORMAT_GUARD },
-        ...messages.map(m => ({ role: m.role, content: m.content } as OpenAI.Chat.ChatCompletionMessageParam)),
-      ]
+    console.log('[chat] start', JSON.stringify({
+      ...requestMeta,
+      modelName,
+      baseURL,
+      env: getOpenAIEnvStatus(),
+      timeoutMs: UPSTREAM_TIMEOUT_MS,
+    }))
 
-      console.log('[chat] start', JSON.stringify({
-        ...requestMeta,
-        modelName,
-        baseURL,
-        env: getOpenAIEnvStatus(),
-        timeoutMs: UPSTREAM_TIMEOUT_MS,
-      }))
+    const upstreamStartedAt = Date.now()
+    const response = await client.chat.completions.create({
+      model: modelName,
+      max_tokens: 2048,
+      messages: openaiMessages,
+      stream: false,
+    })
 
-      const upstreamStartedAt = Date.now()
-      const response = await client.chat.completions.create({
-        model: modelName,
-        max_tokens: 2048,
-        messages: openaiMessages,
-        stream: false,
-      })
+    const content = response.choices[0]?.message?.content ?? ''
+    const firstChunkAt = Date.now()
 
-      const content = response.choices[0]?.message?.content ?? ''
-      const firstChunkAt = Date.now()
+    console.log('[chat] first_chunk', JSON.stringify({
+      ...requestMeta,
+      durationMs: firstChunkAt - upstreamStartedAt,
+      chunkCount: content ? 1 : 0,
+    }))
 
-      console.log('[chat] first_chunk', JSON.stringify({
-        ...requestMeta,
-        durationMs: firstChunkAt - upstreamStartedAt,
-        chunkCount: content ? 1 : 0,
-      }))
+    console.log('[chat] complete', JSON.stringify({
+      ...requestMeta,
+      durationMs: Date.now() - startedAt,
+      upstreamDurationMs: Date.now() - upstreamStartedAt,
+      firstChunkLatencyMs: firstChunkAt - upstreamStartedAt,
+      chunkCount: content ? 1 : 0,
+      contentLength: content.length,
+    }))
 
-      if (content) {
-        await stream.writeSSE({ data: content })
-      }
-
-      console.log('[chat] complete', JSON.stringify({
-        ...requestMeta,
-        durationMs: Date.now() - startedAt,
-        upstreamDurationMs: Date.now() - upstreamStartedAt,
-        firstChunkLatencyMs: firstChunkAt ? firstChunkAt - upstreamStartedAt : null,
-        chunkCount: content ? 1 : 0,
-        contentLength: content.length,
-      }))
-    } catch (err) {
-      const errorMessage = formatUpstreamError(err)
-      console.error('[chat] failed', JSON.stringify({
-        ...requestMeta,
-        durationMs: Date.now() - startedAt,
-        error: errorMessage,
-        details: serializeError(err),
-        env: getOpenAIEnvStatus(),
-      }))
-      await stream.writeSSE({ data: `系统错误：${errorMessage}` })
-      await stream.writeSSE({ data: '[ERROR]' })
-    } finally {
-      await stream.writeSSE({ data: '[DONE]' })
-    }
-  })
+    return c.json({ content })
+  } catch (err) {
+    const errorMessage = formatUpstreamError(err)
+    console.error('[chat] failed', JSON.stringify({
+      ...requestMeta,
+      durationMs: Date.now() - startedAt,
+      error: errorMessage,
+      details: serializeError(err),
+      env: getOpenAIEnvStatus(),
+    }))
+    return c.json({ error: errorMessage }, 502)
+  }
 })
 
 export default app

@@ -29,6 +29,15 @@ export async function* streamChat(
   })
 
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
+
+  const contentType = res.headers.get('content-type') || ''
+  if (contentType.includes('application/json')) {
+    const payload = await res.json() as { content?: string; error?: string }
+    if (payload.error) throw new Error(payload.error)
+    if (payload.content) yield payload.content
+    return
+  }
+
   if (!res.body) throw new Error('No response body')
 
   const reader = res.body.getReader()
