@@ -6,8 +6,8 @@ import chatRoute from './routes/chat'
 const app = new Hono()
 
 app.use('*', cors({ origin: '*' }))
-app.route('/api/profiles', profilesRoute)
-app.route('/api/chat', chatRoute)
+app.route('/profiles', profilesRoute)
+app.route('/chat', chatRoute)
 app.get('/health', (c) => c.json({ ok: true }))
 
 export default app
