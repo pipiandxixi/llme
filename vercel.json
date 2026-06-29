@@ -10,7 +10,7 @@
   },
   "rewrites": [
     {
-      "source": "/((?!api/).*)",
+      "source": "/((?!api/|profiles/).*)",
       "destination": "/index.html"
     }
   ]
