@@ -13,7 +13,7 @@ export default async function handler(req: any, res: any) {
     return sendJson(res, {
       ok: true,
       contentLength: result.content.length,
-      preview: result.content.slice(0, 120),
+      content: result.content,
       modelName: result.modelName,
       baseURL: result.baseURL,
     })
