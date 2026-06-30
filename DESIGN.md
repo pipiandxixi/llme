@@ -15,10 +15,11 @@ llme 是一个轻量级的个人数字克隆系统，通过结构化的个人画
 - 聚焦认知和决策逻辑的复刻，不追求语气/措辞的模仿
 - 所有数据（画像、知识库）以 Markdown + YAML 格式存储，便于人工 review 和 git 版本控制
 - 画像和知识库分离，支持独立维护和更新
+- 本地记忆优先，只有在问题明显时间敏感或本地信息不足时才开放外部搜索
 
 **非目标（Out of Scope）：**
 - 语气、说话风格、口头禅的模仿
-- 实时数据接入（社交媒体、邮件等）
+- 默认每轮都联网的通用搜索助手模式
 - 多用户 / 多租户云端部署
 - 移动端
 
@@ -39,8 +40,14 @@ llme 是一个轻量级的个人数字克隆系统，通过结构化的个人画
 ### 知识记忆库（Knowledge Base）
 记录个人观点、判断、决策过程的结构化条目集合。每条条目都有 YAML 元数据，支持按 domain、tag、时间过滤检索。
 
+### 外部信息获取（Web Search）
+外部搜索不是独立替代本地知识的主来源，而是一个按需开启的补充层，用来处理最新、最近、今天、当前等时间敏感问题，或补足本地记忆明显不足的事实信息。
+
 ### 克隆对话（Clone Chat）
 用户向克隆提问，系统自动组装个人画像 + 相关知识条目作为上下文，调用 LLM 生成符合该人认知特征的回答。
+
+### 对话编排器（Chat Orchestrator）
+对话编排器负责决定本轮只使用本地画像和本地记忆，还是额外开放联网搜索工具。其职责不是替代画像和记忆，而是协调不同信息层的使用顺序和边界。
 
 ---
 
@@ -54,6 +61,7 @@ llme 是一个轻量级的个人数字克隆系统，通过结构化的个人画
 | LLM | OpenAI 兼容 SDK | 通过 `.env` 配置 endpoint + model，支持 OpenRouter 等代理 |
 | 存储 | 本地文件系统（Markdown + YAML） | 无数据库，git 原生版本控制 |
 | 检索 | YAML frontmatter 过滤 + 关键词匹配打分 | 当前无向量检索 |
+| 外部信息获取 | OpenRouter `openrouter:web_search` | 仅在后端判定需要时对模型开放 |
 | 包管理 | npm（根目录）/ pnpm（app/ 子目录） | — |
 
 ---
@@ -75,6 +83,7 @@ llme/
 │   ├── server/src/                  # Hono 后端（本地开发）
 │   │   ├── config.ts
 │   │   ├── lib/
+│   │   │   ├── chat-runner.ts
 │   │   │   ├── domain-detector.ts
 │   │   │   ├── knowledge-retriever.ts
 │   │   │   ├── profile-loader.ts
@@ -168,21 +177,44 @@ domain_index: {}
 
 ---
 
-## 六、对话装配流程（当前实现）
+## 六、知识分层与职责
 
-### 6.1 流程总览
+当前系统使用四层职责分离：
+
+- `profile`
+  - 负责人格、价值观、思维方式、长期稳定偏好
+- `local memory`
+  - 负责本地知识条目、历史材料、决策记录、长期有效但可更新的背景事实
+- `web search`
+  - 负责最新事实、外部变化、时间敏感信息
+- `chat orchestrator`
+  - 负责判断本轮该调用哪几层，以及如何合并后再生成回答
+
+可理解为：
+
+- `profile` = 这个人怎么想
+- `local memory` = 这个人过去知道什么、积累了什么
+- `web search` = 外部世界最近发生了什么
+- `orchestrator` = 这次回答该参考哪些信息源
+
+---
+
+## 七、对话装配流程（当前实现）
+
+### 7.1 流程总览
 
 ```
 用户提问
+  → chat-runner.ts：判断 webSearchMode、分析本地记忆命中、决定是否开放联网搜索
   → domain-detector.ts：关键词匹配，识别 domain（tech / business / …）
   → profile-loader.ts：读取 core/*、cognition/*、context/*、domains/{matched}.md
   → knowledge-retriever.ts：entries + decisions，domain 过滤 + tag 打分，取前 10 条
   → prompt-assembler.ts：拼装 XML 结构 system prompt
-  → OpenAI 兼容 API：非流式调用，返回结构化 JSON
+  → OpenAI 兼容 API：按需附带 OpenRouter `openrouter:web_search` tool，返回结构化 JSON
   → 前端 MessageBubble 渲染 JSON 字段
 ```
 
-### 6.2 Prompt 组装结构
+### 7.2 Prompt 组装结构
 
 `_shared/system/base_prompt.md` 渲染后作为根，后续追加 XML 标签包裹的画像和知识：
 
@@ -212,14 +244,14 @@ domain_index: {}
 </knowledge>
 ```
 
-### 6.3 Domain 识别
+### 7.3 Domain 识别
 
 `domain-detector.ts` 使用关键词表进行字符串匹配，目前支持 `tech`（技术/AI/工程等关键词）和 `business`（公司/市场/投资等关键词）两个 domain。
 
 - 匹配到 domain → 仅加载对应 `domains/{domain}.md`
 - 未匹配 → 加载全部 domains 文件
 
-### 6.4 知识检索算法（当前版本）
+### 7.4 知识检索算法（当前版本）
 
 ```
 inputs: knowledgeDir, domains[], query
@@ -230,7 +262,34 @@ inputs: knowledgeDir, domains[], query
 4. score DESC 排序，取前 10 条正文内容
 ```
 
-### 6.5 响应格式
+除正文检索外，系统还会保留分数信息，用于判断本地记忆是否足以支持本轮回答，作为是否开放联网搜索的 gating 信号。
+
+### 7.5 联网搜索 gating（当前版本）
+
+当前不是“每轮都给模型联网权限”，而是由 `chat-runner.ts` 先做一层本地判断，再决定本轮是否附带 `openrouter:web_search`。
+
+请求模式：
+
+- `off`
+  - 强制关闭联网，只使用 `profile + local memory`
+- `auto`
+  - 默认模式；先检查时间敏感性、显式搜索意图、本地知识命中情况，再决定是否开放联网
+
+`auto` 模式下的判断原则：
+
+1. 用户明确要求“搜一下 / 查一下 / search / look up” → 开放联网
+2. 问题包含“最新 / 最近 / 今天 / 当前 / latest / recent / today”等时间敏感信号 → 开放联网
+3. 本地记忆已有明显相关命中 → 优先本地，不开放联网
+4. 问题偏风格、价值观、思维、判断方式，且没有时间敏感信号 → 不开放联网
+5. 问题偏事实查询，且本地记忆没有明显命中 → 开放联网
+
+这个设计的目标是保证：
+
+- 本地记忆优先
+- 联网搜索只在需要时使用
+- 搜索结果是补充层，不直接替代人物画像和本地记忆
+
+### 7.6 响应格式
 
 LLM 被要求输出合法 JSON（非 Markdown）：
 
@@ -249,7 +308,7 @@ LLM 被要求输出合法 JSON（非 Markdown）：
 }
 ```
 
-### 6.6 Token 预算参考
+### 7.7 Token 预算参考
 
 | 部分 | 目标上限 |
 |------|----------|
@@ -257,6 +316,22 @@ LLM 被要求输出合法 JSON（非 Markdown）：
 | 条件加载（域 + 知识） | 3000 tokens |
 | 对话历史 | ≥ 4000 tokens |
 | 总上下文 | ≤ 32K tokens |
+
+---
+
+## 八、当前实现状态
+
+截至 2026-06-30，系统已经完成以下改造：
+
+- 后端聊天主逻辑收敛到 `app/server/src/lib/chat-runner.ts`
+- 本地开发入口和 `api/` 生产入口复用同一套聊天执行逻辑
+- 聊天请求支持 `webSearchMode`
+- 默认模式为 `auto`
+- 只有在后端本地判断需要时，才向 OpenRouter 请求附带 `openrouter:web_search`
+
+这意味着当前系统的实际行为已经从“纯本地 prompt + knowledge 问答”升级为：
+
+`profile + local memory + conditional web search -> structured answer`
 
 ---
 

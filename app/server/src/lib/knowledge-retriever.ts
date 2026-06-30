@@ -40,11 +40,16 @@ async function loadEntries(dir: string): Promise<Array<{ meta: EntryMeta; conten
   }
 }
 
-export async function retrieveKnowledge(
+export interface KnowledgeMatch {
+  content: string
+  score: number
+}
+
+export async function scoreKnowledge(
   knowledgeDir: string,
   domains: string[],
   query: string
-): Promise<string[]> {
+): Promise<KnowledgeMatch[]> {
   const [entries, decisions] = await Promise.all([
     loadEntries(path.join(knowledgeDir, 'entries')),
     loadEntries(path.join(knowledgeDir, 'decisions')),
@@ -53,9 +58,9 @@ export async function retrieveKnowledge(
   const all = [...entries, ...decisions]
   if (all.length === 0) return []
 
-  const queryTokens = query.toLowerCase().split(/\s+/)
+  const queryTokens = query.toLowerCase().split(/\s+/).filter(Boolean)
 
-  const scored = all
+  return all
     .filter(e => {
       if (domains.length === 0) return true
       const entryDomains = e.meta.domain ?? []
@@ -68,6 +73,13 @@ export async function retrieveKnowledge(
     })
     .sort((a, b) => b.score - a.score)
     .slice(0, 10)
+}
 
+export async function retrieveKnowledge(
+  knowledgeDir: string,
+  domains: string[],
+  query: string
+): Promise<string[]> {
+  const scored = await scoreKnowledge(knowledgeDir, domains, query)
   return scored.map(e => e.content)
 }

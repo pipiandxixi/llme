@@ -3,6 +3,7 @@ import { APIConnectionError, APIConnectionTimeoutError, APIError } from 'openai/
 import path from 'path'
 import { PROFILES_DIR, getOpenAIConfig, getOpenAIEnvStatus } from '../app/server/src/config'
 import { assembleSystemPrompt } from '../app/server/src/lib/prompt-assembler'
+import { runChat as runSharedChat } from '../app/server/src/lib/chat-runner'
 import type { ChatRequest } from '../app/server/src/types'
 
 export { getOpenAIEnvStatus }
@@ -104,54 +105,8 @@ export async function runFullChat(profileId: string, query: string, maxTokens = 
 }
 
 export async function runChat(body: ChatRequest) {
-  const { profileId, messages } = body
-  if (!profileId || !messages?.length) {
-    throw new Error('profileId and messages are required')
-  }
-
-  const userQuery = messages.filter((m) => m.role === 'user').pop()?.content ?? ''
-  const profileDir = path.join(PROFILES_DIR, profileId)
-  const systemPrompt = await assembleSystemPrompt(profileDir, userQuery)
-  const { apiKey, baseURL, modelName } = getOpenAIConfig()
-  const client = new OpenAI({
-    apiKey,
-    baseURL,
+  return runSharedChat(body, {
     timeout: UPSTREAM_TIMEOUT_MS,
     maxRetries: 0,
   })
-
-  const openaiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-    { role: 'system', content: systemPrompt },
-    { role: 'system', content: `
-你必须只输出一个合法 JSON 对象，不要输出 Markdown，不要输出代码块，不要输出额外解释。
-
-JSON 结构如下：
-{
-  "intro": "开场核心判断，1到3句话",
-  "sections": [
-    {
-      "title": "小标题",
-      "bullets": ["要点1", "要点2"],
-      "paragraphs": ["补充说明1", "补充说明2"]
-    }
-  ],
-  "conclusion": "简短结论",
-  "followUp": "仅在确实有帮助时填写一个追问，否则输出空字符串"
-}
-`.trim() },
-    ...messages.map((m) => ({ role: m.role, content: m.content } as OpenAI.Chat.ChatCompletionMessageParam)),
-  ]
-
-  const response = await client.chat.completions.create({
-    model: modelName,
-    max_tokens: 2048,
-    messages: openaiMessages,
-    stream: false,
-  })
-
-  return {
-    content: response.choices[0]?.message?.content ?? '',
-    modelName,
-    baseURL,
-  }
 }

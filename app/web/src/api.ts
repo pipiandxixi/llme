@@ -1,4 +1,4 @@
-import type { ProfileMeta, Message, ProfileDocuments } from './types'
+import type { ProfileMeta, Message, ProfileDocuments, WebSearchMode } from './types'
 
 export function getProfileAvatarUrl(profile: ProfileMeta): string | undefined {
   if (!profile.avatar) return undefined
@@ -20,12 +20,13 @@ export async function getProfileDocuments(profileId: string): Promise<ProfileDoc
 
 export async function* streamChat(
   profileId: string,
-  messages: Message[]
+  messages: Message[],
+  webSearchMode: WebSearchMode = 'auto'
 ): AsyncGenerator<string> {
   const res = await fetch('/api/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ profileId, messages }),
+    body: JSON.stringify({ profileId, messages, webSearchMode }),
   })
 
   if (!res.ok) throw new Error(`HTTP ${res.status}`)

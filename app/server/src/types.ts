@@ -10,7 +10,10 @@ export interface Message {
   content: string
 }
 
+export type WebSearchMode = 'off' | 'auto'
+
 export interface ChatRequest {
   profileId: string
   messages: Message[]
+  webSearchMode?: WebSearchMode
 }

@@ -10,6 +10,8 @@ export interface Message {
   content: string
 }
 
+export type WebSearchMode = 'off' | 'auto'
+
 export interface Topic {
   id: string
   profileId: string
