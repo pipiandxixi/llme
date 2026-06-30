@@ -1,0 +1,24 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="48" fill="#E9EEF5"/>
+  <rect x="32" y="32" width="448" height="448" rx="36" fill="url(#bg)"/>
+  <circle cx="256" cy="192" r="84" fill="#F3CDB9"/>
+  <path d="M169 183C169 128 206 91 256 91C307 91 343 129 343 187V225H169V183Z" fill="#1F2738"/>
+  <path d="M192 182C198 142 222 120 255 120C291 120 313 145 319 182C301 166 281 158 256 158C230 158 210 166 192 182Z" fill="#2A3347"/>
+  <path d="M215 213C222 228 237 238 256 238C275 238 290 228 297 213" stroke="#D49D8A" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="225" cy="191" r="9" fill="#2F2A2A"/>
+  <circle cx="287" cy="191" r="9" fill="#2F2A2A"/>
+  <path d="M233 165C242 158 252 156 262 159" stroke="#2A3347" stroke-width="6" stroke-linecap="round"/>
+  <path d="M277 159C287 156 297 158 306 165" stroke="#2A3347" stroke-width="6" stroke-linecap="round"/>
+  <path d="M242 214C251 222 261 224 270 221" stroke="#B86B6B" stroke-width="6" stroke-linecap="round"/>
+  <path d="M164 408C170 323 208 275 256 275C304 275 342 323 348 408" fill="#1E2C46"/>
+  <path d="M205 287C220 309 237 320 256 320C275 320 292 309 307 287L330 315C303 343 279 357 256 357C233 357 209 343 182 315L205 287Z" fill="#F8FBFF"/>
+  <rect x="198" y="334" width="116" height="20" rx="10" fill="#2D4B78" opacity="0.18"/>
+  <path d="M104 420C145 373 190 349 256 349C322 349 367 373 408 420" stroke="#6E8AB6" stroke-width="10" stroke-linecap="round" opacity="0.5"/>
+  <text x="256" y="454" text-anchor="middle" fill="#314A73" font-family="Arial, sans-serif" font-size="24" font-weight="700">学迪</text>
+  <defs>
+    <linearGradient id="bg" x1="64" y1="64" x2="448" y2="448" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8FBFF"/>
+      <stop offset="1" stop-color="#D7E3F5"/>
+    </linearGradient>
+  </defs>
+</svg>
