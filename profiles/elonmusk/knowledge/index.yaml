@@ -1,7 +1,24 @@
 profile: elonmusk
 created: 2026-06-28
-last_updated: 2026-06-28
-entry_count: 0
+last_updated: 2026-06-30
+entry_count: 3
 decision_count: 0
-tag_index: {}
-domain_index: {}
+tag_index:
+  tesla: 3
+  ai: 1
+  robotics: 1
+  optimus: 1
+  dojo: 1
+  robotaxi: 1
+  fsd: 2
+  autopilot: 1
+  safety: 1
+  regulation: 1
+  investigation: 1
+  hw3: 1
+  software: 1
+  rollout: 1
+  autonomy: 1
+domain_index:
+  tech: 3
+  business: 3
