@@ -4,6 +4,7 @@ import profilesRoute from './routes/profiles'
 import profileDataRoute from './routes/profile-data'
 import chatRoute from './routes/chat'
 import diagnosticsRoute from './routes/diagnostics'
+import adminRoute from './routes/admin'
 
 const app = new Hono()
 
@@ -12,6 +13,7 @@ app.route('/profiles', profilesRoute)
 app.route('/profile', profileDataRoute)
 app.route('/chat', chatRoute)
 app.route('/diagnostics', diagnosticsRoute)
+app.route('/admin', adminRoute)
 app.get('/health', (c) => c.json({ ok: true }))
 
 export default app

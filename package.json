@@ -5,13 +5,16 @@
   "scripts": {
     "dev": "npm --prefix app run dev",
     "build:web": "npm --prefix app/web run build",
-    "build:server": "npm --prefix app/server run build"
+    "build:server": "npm --prefix app/server run build",
+    "import:profile": "node --import tsx scripts/import-profile-to-db.ts",
+    "process:memory": "node --import tsx scripts/process-memory.ts"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.0",
     "dotenv": "^16.4.0",
     "hono": "^4.6.0",
     "openai": "^4.77.0",
+    "pg": "^8.22.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
     "react-markdown": "^10.1.0",
@@ -19,6 +22,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "@types/pg": "^8.20.0",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.0",
