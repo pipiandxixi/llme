@@ -10,6 +10,10 @@
   },
   "rewrites": [
     {
+      "source": "/api/(.*)",
+      "destination": "/api/[...path]"
+    },
+    {
       "source": "/((?!api/|profiles/).*)",
       "destination": "/index.html"
     }
