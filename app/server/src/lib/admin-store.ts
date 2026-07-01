@@ -1,6 +1,6 @@
 import type { Pool } from 'pg'
 import OpenAI from 'openai'
-import { getPostgresPool } from './storage/postgres-client'
+import { getPostgresPool, withRetry } from './storage/postgres-client'
 import { getOpenAIConfig } from '../config'
 
 export type ProfileLayer = 'core' | 'cognition' | 'context' | 'domain'
@@ -188,19 +188,27 @@ export async function updateProfileSection(
   bodyMd: string,
 ): Promise<void> {
   assertPostgresMode()
-  const profile = await getProfileRow(profileId)
   const pool = getPostgresPool()
   const today = new Date().toISOString().slice(0, 10)
-  const result = await pool.query(
-    `update public.profile_sections
-     set body_md = $4, last_updated = $5::date
-     where profile_id = $1 and layer = $2 and section_key = $3
-     returning *`,
-    [profile.id, layer, sectionKey, bodyMd, today],
-  )
-  const row = result.rows[0]
-  if (!row) throw new Error(`Section not found: ${layer}/${sectionKey}`)
-  await recordRevision(pool, profile.id, 'profile_sections', row.id, 'update', row, 'admin-ui')
+
+  // Single round trip: resolve profile + update in one query instead of a
+  // separate profile lookup first, and retry once on transient connection
+  // drops instead of hanging until Vercel's own function timeout kills it.
+  const row = await withRetry(async () => {
+    const result = await pool.query(
+      `update public.profile_sections
+       set body_md = $4, last_updated = $5::date
+       where profile_id = (select id from public.profiles where slug = $1 and status <> 'archived')
+         and layer = $2 and section_key = $3
+       returning *`,
+      [profileId, layer, sectionKey, bodyMd, today],
+    )
+    const row = result.rows[0]
+    if (!row) throw new Error(`Section not found: ${layer}/${sectionKey}`)
+    return row
+  })
+
+  await withRetry(() => recordRevision(pool, row.profile_id, 'profile_sections', row.id, 'update', row, 'admin-ui'))
 }
 
 export interface MemoryItemUpdateFields {
@@ -220,35 +228,40 @@ export async function updateMemoryItem(
   fields: MemoryItemUpdateFields,
 ): Promise<void> {
   assertPostgresMode()
-  const profile = await getProfileRow(profileId)
   const pool = getPostgresPool()
-  const result = await pool.query(
-    `update public.memory_items
-     set body_md = $4,
-         domains = $5::text[],
-         tags = $6::text[],
-         memory_type = $7,
-         confidence = $8,
-         outcome = $9,
-         source_label = $10
-     where profile_id = $1 and kind = $2 and slug = $3
-     returning *`,
-    [
-      profile.id,
-      kind,
-      slug,
-      fields.bodyMd,
-      fields.domains,
-      fields.tags,
-      fields.memoryType ?? null,
-      fields.confidence ?? null,
-      fields.outcome ?? null,
-      fields.sourceLabel ?? null,
-    ],
-  )
-  const row = result.rows[0]
-  if (!row) throw new Error(`Memory item not found: ${kind}/${slug}`)
-  await recordRevision(pool, profile.id, 'memory_items', row.id, 'update', row, 'admin-ui')
+
+  const row = await withRetry(async () => {
+    const result = await pool.query(
+      `update public.memory_items
+       set body_md = $4,
+           domains = $5::text[],
+           tags = $6::text[],
+           memory_type = $7,
+           confidence = $8,
+           outcome = $9,
+           source_label = $10
+       where profile_id = (select id from public.profiles where slug = $1 and status <> 'archived')
+         and kind = $2 and slug = $3
+       returning *`,
+      [
+        profileId,
+        kind,
+        slug,
+        fields.bodyMd,
+        fields.domains,
+        fields.tags,
+        fields.memoryType ?? null,
+        fields.confidence ?? null,
+        fields.outcome ?? null,
+        fields.sourceLabel ?? null,
+      ],
+    )
+    const row = result.rows[0]
+    if (!row) throw new Error(`Memory item not found: ${kind}/${slug}`)
+    return row
+  })
+
+  await withRetry(() => recordRevision(pool, row.profile_id, 'memory_items', row.id, 'update', row, 'admin-ui'))
 }
 
 // ---------- raw material submission ----------
