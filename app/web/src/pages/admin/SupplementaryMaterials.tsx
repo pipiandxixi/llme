@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { diffWords } from 'diff'
 import {
   getRawMaterials,
   submitRawMaterial,
@@ -16,6 +17,40 @@ interface Props {
 const STATUS_LABEL: Record<string, string> = {
   pending_processing: '待分析',
   processed: '已完成',
+}
+
+function DiffPreview({ before, after }: { before: string; after: string }) {
+  const parts = diffWords(before, after)
+  const beforeParts = parts.filter((part) => !part.added)
+  const afterParts = parts.filter((part) => !part.removed)
+
+  return (
+    <div>
+      <div className="grid grid-cols-2 gap-3 mb-1">
+        <div className="text-[11px] text-[#999]">原文</div>
+        <div className="text-[11px] text-[#999]">建议内容</div>
+      </div>
+      {/* Single shared scroll container for both columns, so scrolling to
+          compare a long section keeps 原文/建议内容 aligned instead of each
+          side scrolling independently. */}
+      <div className="grid grid-cols-2 gap-3 max-h-[280px] overflow-y-auto bg-[#f7f7f7] rounded-lg p-3">
+        <pre className="whitespace-pre-wrap text-[13px] leading-6 m-0">
+          {beforeParts.map((part, index) => (
+            <span key={index} className={part.removed ? 'bg-red-100 text-red-700 line-through decoration-red-400' : undefined}>
+              {part.value}
+            </span>
+          ))}
+        </pre>
+        <pre className="whitespace-pre-wrap text-[13px] leading-6 m-0 md:border-l md:border-black/10 md:pl-3">
+          {afterParts.map((part, index) => (
+            <span key={index} className={part.added ? 'bg-green-100 text-green-800' : undefined}>
+              {part.value}
+            </span>
+          ))}
+        </pre>
+      </div>
+    </div>
+  )
 }
 
 function proposalTargetLabel(proposal: ContentProposal): string {
@@ -233,16 +268,7 @@ export default function SupplementaryMaterials({ profileId, onMaterialApplied }:
                 )}
 
                 {proposal.previousBodyMd ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div>
-                      <div className="text-[11px] text-[#999] mb-1">原文</div>
-                      <pre className="whitespace-pre-wrap text-[13px] leading-6 bg-[#f7f7f7] rounded-lg p-3 max-h-[280px] overflow-y-auto">{proposal.previousBodyMd}</pre>
-                    </div>
-                    <div>
-                      <div className="text-[11px] text-[#999] mb-1">建议内容</div>
-                      <pre className="whitespace-pre-wrap text-[13px] leading-6 bg-[#f7f7f7] rounded-lg p-3 max-h-[280px] overflow-y-auto">{proposal.proposedBodyMd}</pre>
-                    </div>
-                  </div>
+                  <DiffPreview before={proposal.previousBodyMd} after={proposal.proposedBodyMd} />
                 ) : (
                   <pre className="whitespace-pre-wrap text-[13px] leading-6 bg-[#f7f7f7] rounded-lg p-3 max-h-[280px] overflow-y-auto">{proposal.proposedBodyMd}</pre>
                 )}
