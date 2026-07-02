@@ -10,6 +10,7 @@ import {
   analyzeRawMaterial,
   listProposals,
   decideProposal,
+  getMemoryGraph,
   type ProfileLayer,
   type MemoryKind,
 } from '../lib/admin-store'
@@ -65,6 +66,17 @@ app.get('/profiles/:id/memory', async (c) => {
   if (!validateProfileId(profileId)) return c.json({ error: 'Invalid profile id' }, 400)
   try {
     return c.json(await listMemoryItemsForEdit(profileId))
+  } catch (err) {
+    const [body, status] = handleError(err)
+    return c.json(body, status)
+  }
+})
+
+app.get('/profiles/:id/memory-graph', async (c) => {
+  const profileId = c.req.param('id')
+  if (!validateProfileId(profileId)) return c.json({ error: 'Invalid profile id' }, 400)
+  try {
+    return c.json(await getMemoryGraph(profileId))
   } catch (err) {
     const [body, status] = handleError(err)
     return c.json(body, status)

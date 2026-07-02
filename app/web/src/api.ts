@@ -9,6 +9,7 @@ import type {
   MemoryItemRecord,
   RawMaterial,
   ContentProposal,
+  MemoryGraphData,
 } from './types'
 
 export function getProfileAvatarUrl(profile: ProfileMeta): string | undefined {
@@ -60,6 +61,10 @@ export function updateAdminSection(
 
 export function getAdminMemory(profileId: string): Promise<MemoryItemRecord[]> {
   return adminRequest(`/profiles/${encodeURIComponent(profileId)}/memory`)
+}
+
+export function getMemoryGraph(profileId: string): Promise<MemoryGraphData> {
+  return adminRequest(`/profiles/${encodeURIComponent(profileId)}/memory-graph`)
 }
 
 export interface MemoryUpdatePayload {

@@ -700,3 +700,82 @@ export async function decideProposal(proposalId: string, decision: 'approve' | '
   await maybeMarkRawProcessed(pool, proposal.source_memory_item_id)
   return mapProposalRow(updated.rows[0])
 }
+
+// ---------- memory relationship graph ----------
+
+export interface MemoryGraphConcept {
+  slug: string
+  title: string
+  tags: string[]
+  domains: string[]
+}
+
+export interface MemoryGraphMemory {
+  kind: MemoryKind
+  slug: string
+  title: string
+  linked: boolean
+}
+
+export interface MemoryGraphEdge {
+  conceptSlug: string
+  memoryKind: MemoryKind
+  memorySlug: string
+}
+
+export interface MemoryGraphData {
+  concepts: MemoryGraphConcept[]
+  memories: MemoryGraphMemory[]
+  edges: MemoryGraphEdge[]
+}
+
+export async function getMemoryGraph(profileId: string): Promise<MemoryGraphData> {
+  assertPostgresMode()
+  const profile = await getProfileRow(profileId)
+  const pool = getPostgresPool()
+
+  const [conceptsResult, memoriesResult, edgesResult] = await Promise.all([
+    pool.query<{ slug: string; title: string; tags: string[]; domains: string[] }>(
+      `select slug, title, tags, domains from public.knowledge_nodes where profile_id = $1 order by slug`,
+      [profile.id],
+    ),
+    pool.query<{ kind: MemoryKind; slug: string; title: string | null }>(
+      `select kind, slug, title from public.memory_items
+       where profile_id = $1 and kind in ('entry', 'decision')
+       order by kind desc, slug desc`,
+      [profile.id],
+    ),
+    pool.query<{ concept_slug: string; memory_kind: MemoryKind; memory_slug: string }>(
+      `select n.slug as concept_slug, m.kind as memory_kind, m.slug as memory_slug
+       from public.knowledge_node_sources s
+       join public.knowledge_nodes n on n.id = s.knowledge_node_id
+       join public.memory_items m on m.id = s.memory_item_id
+       where n.profile_id = $1`,
+      [profile.id],
+    ),
+  ])
+
+  const edges: MemoryGraphEdge[] = edgesResult.rows.map((row) => ({
+    conceptSlug: row.concept_slug,
+    memoryKind: row.memory_kind,
+    memorySlug: row.memory_slug,
+  }))
+
+  const linkedMemoryKeys = new Set(edges.map((edge) => `${edge.memoryKind}:${edge.memorySlug}`))
+
+  return {
+    concepts: conceptsResult.rows.map((row) => ({
+      slug: row.slug,
+      title: row.title,
+      tags: row.tags ?? [],
+      domains: row.domains ?? [],
+    })),
+    memories: memoriesResult.rows.map((row) => ({
+      kind: row.kind,
+      slug: row.slug,
+      title: row.title ?? row.slug,
+      linked: linkedMemoryKeys.has(`${row.kind}:${row.slug}`),
+    })),
+    edges,
+  }
+}

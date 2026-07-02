@@ -6,9 +6,10 @@ import {
   updateAdminSection,
   updateAdminMemory,
 } from '../api'
-import type { MemoryItemRecord, ProfileMeta, ProfileSectionRecord } from '../types'
+import type { MemoryItemRecord, MemoryKind, ProfileMeta, ProfileSectionRecord } from '../types'
 import ProfileAvatar from '../components/ProfileAvatar'
 import SupplementaryMaterials from './admin/SupplementaryMaterials'
+import MemoryGraph from './admin/MemoryGraph'
 
 type View = 'profile' | 'knowledge' | 'supplementary'
 
@@ -57,6 +58,7 @@ export default function Admin({ profiles, initialProfileId, onClose }: Props) {
   const [sections, setSections] = useState<ProfileSectionRecord[] | null>(null)
   const [memoryItems, setMemoryItems] = useState<MemoryItemRecord[] | null>(null)
   const [selectedKey, setSelectedKey] = useState('')
+  const [showMemoryGraph, setShowMemoryGraph] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [expandedProfiles, setExpandedProfiles] = useState<Set<string>>(() => new Set([initialProfileId]))
@@ -130,6 +132,7 @@ export default function Admin({ profiles, initialProfileId, onClose }: Props) {
 
   const changeView = (next: View) => {
     setView(next)
+    setShowMemoryGraph(false)
     if (next === 'profile') setSelectedKey(profileDocs[0] ? sectionKeyOf(profileDocs[0]) : '')
     else if (next === 'knowledge') setSelectedKey(memoryDocs[0] ? memoryKeyOf(memoryDocs[0]) : '')
     else setSelectedKey('')
@@ -138,6 +141,7 @@ export default function Admin({ profiles, initialProfileId, onClose }: Props) {
   const selectProfileView = (nextProfileId: string, nextView: View) => {
     setExpandedProfiles((current) => new Set(current).add(nextProfileId))
     setView(nextView)
+    setShowMemoryGraph(false)
     if (nextProfileId === profileId) {
       if (nextView === 'profile') setSelectedKey(profileDocs[0] ? sectionKeyOf(profileDocs[0]) : '')
       else if (nextView === 'knowledge') setSelectedKey(memoryDocs[0] ? memoryKeyOf(memoryDocs[0]) : '')
@@ -146,6 +150,11 @@ export default function Admin({ profiles, initialProfileId, onClose }: Props) {
       setSelectedKey('')
       setProfileId(nextProfileId)
     }
+  }
+
+  const openMemoryGraph = () => {
+    setShowMemoryGraph(true)
+    setSelectedKey('')
   }
 
   const toggleProfile = (id: string) => {
@@ -298,10 +307,21 @@ export default function Admin({ profiles, initialProfileId, onClose }: Props) {
           ) : (
             <div className="flex-1 min-h-0 flex">
               <aside className="w-[260px] shrink-0 bg-[#fafafa] border-r border-black/[0.07] overflow-y-auto p-3">
-                <div className="px-2 py-2 mb-1">
-                  <div className="text-sm font-semibold">{NAV_ITEMS.find((item) => item.id === view)?.label}</div>
-                  <div className="text-[11px] text-[#999] mt-0.5">{documents.length} 个文件</div>
-                </div>
+                {view === 'knowledge' ? (
+                  <button
+                    onClick={openMemoryGraph}
+                    className={`w-full text-left px-2 py-2 mb-1 rounded-lg ${showMemoryGraph ? 'bg-[#e7e7e7]' : 'hover:bg-[#f1f1f1]'}`}
+                    title="查看记忆关联图"
+                  >
+                    <div className="text-sm font-semibold">{NAV_ITEMS.find((item) => item.id === view)?.label}</div>
+                    <div className="text-[11px] text-[#999] mt-0.5">{documents.length} 个文件 · 点击查看关联图</div>
+                  </button>
+                ) : (
+                  <div className="px-2 py-2 mb-1">
+                    <div className="text-sm font-semibold">{NAV_ITEMS.find((item) => item.id === view)?.label}</div>
+                    <div className="text-[11px] text-[#999] mt-0.5">{documents.length} 个文件</div>
+                  </div>
+                )}
                 {view === 'profile' && profileDocs.map((doc) => (
                   <button key={sectionKeyOf(doc)} onClick={() => setSelectedKey(sectionKeyOf(doc))} className={`w-full flex items-start gap-2 rounded-lg px-2.5 py-2.5 text-left mb-0.5 ${selectedKey === sectionKeyOf(doc) ? 'bg-[#e8e8e8]' : 'hover:bg-[#f0f0f0]'}`}>
                     <span className="mt-0.5 text-[#777]"><FileIcon /></span>
@@ -312,7 +332,7 @@ export default function Admin({ profiles, initialProfileId, onClose }: Props) {
                   </button>
                 ))}
                 {view === 'knowledge' && memoryDocs.map((doc) => (
-                  <button key={memoryKeyOf(doc)} onClick={() => setSelectedKey(memoryKeyOf(doc))} className={`w-full flex items-start gap-2 rounded-lg px-2.5 py-2.5 text-left mb-0.5 ${selectedKey === memoryKeyOf(doc) ? 'bg-[#e8e8e8]' : 'hover:bg-[#f0f0f0]'}`}>
+                  <button key={memoryKeyOf(doc)} onClick={() => { setShowMemoryGraph(false); setSelectedKey(memoryKeyOf(doc)) }} className={`w-full flex items-start gap-2 rounded-lg px-2.5 py-2.5 text-left mb-0.5 ${!showMemoryGraph && selectedKey === memoryKeyOf(doc) ? 'bg-[#e8e8e8]' : 'hover:bg-[#f0f0f0]'}`}>
                     <span className="mt-0.5 text-[#777]"><FileIcon /></span>
                     <span className="min-w-0">
                       <span className="block truncate text-sm">{(doc.title ?? doc.slug).replace(/_/g, ' ')}</span>
@@ -324,7 +344,15 @@ export default function Admin({ profiles, initialProfileId, onClose }: Props) {
               </aside>
 
               <article className="flex-1 min-w-0 overflow-y-auto bg-white">
-                {selectedSection ? (
+                {view === 'knowledge' && showMemoryGraph ? (
+                  <MemoryGraph
+                    profileId={profileId}
+                    onSelectMemory={(kind: MemoryKind, slug: string) => {
+                      setShowMemoryGraph(false)
+                      setSelectedKey(`${kind}:${slug}`)
+                    }}
+                  />
+                ) : selectedSection ? (
                   <div className="max-w-3xl mx-auto px-6 md:px-10 py-9 md:py-12">
                     <div className="mb-6 pb-5 border-b border-black/[0.08]">
                       <h1 className="text-2xl font-semibold tracking-[-0.025em]">{(selectedSection.title ?? selectedSection.sectionKey).replace(/_/g, ' ')}</h1>

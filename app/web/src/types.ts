@@ -69,6 +69,32 @@ export interface RawMaterial {
   createdAt: string
 }
 
+export interface MemoryGraphConcept {
+  slug: string
+  title: string
+  tags: string[]
+  domains: string[]
+}
+
+export interface MemoryGraphMemory {
+  kind: MemoryKind
+  slug: string
+  title: string
+  linked: boolean
+}
+
+export interface MemoryGraphEdge {
+  conceptSlug: string
+  memoryKind: MemoryKind
+  memorySlug: string
+}
+
+export interface MemoryGraphData {
+  concepts: MemoryGraphConcept[]
+  memories: MemoryGraphMemory[]
+  edges: MemoryGraphEdge[]
+}
+
 export interface ContentProposal {
   id: string
   targetType: 'memory_item' | 'profile_section'
