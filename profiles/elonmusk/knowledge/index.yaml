@@ -1,24 +1,37 @@
 profile: elonmusk
 created: 2026-06-28
-last_updated: 2026-06-30
-entry_count: 3
+last_updated: 2026-07-13
+entry_count: 6
 decision_count: 0
 tag_index:
-  tesla: 3
+  tesla: 5
   ai: 1
   robotics: 1
   optimus: 1
   dojo: 1
-  robotaxi: 1
-  fsd: 2
+  robotaxi: 2
+  fsd: 3
   autopilot: 1
   safety: 1
-  regulation: 1
+  regulation: 2
   investigation: 1
   hw3: 1
   software: 1
   rollout: 1
-  autonomy: 1
+  autonomy: 2
+  miami: 1
+  scaling: 1
+  deliveries: 1
+  europe: 1
+  ev: 1
+  demand: 1
+  ai-transition: 1
+  musk: 1
+  sec: 1
+  twitter: 1
+  governance: 1
+  legal-risk: 1
 domain_index:
-  tech: 3
-  business: 3
+  tech: 5
+  business: 6
+  governance: 1
